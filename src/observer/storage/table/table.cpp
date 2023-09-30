@@ -128,7 +128,10 @@ RC Table::create(int32_t table_id,
 
 RC Table::drop(const char *meta_file_path, const char *table_name)
 {
-  RC rc = RC::SUCCESS;
+  RC rc = sync();
+  if (rc != RC::SUCCESS) {
+    return rc;
+  }
   // remove indexes
   for (Index *index : indexes_) {
     index->drop();
