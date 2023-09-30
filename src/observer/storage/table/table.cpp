@@ -126,6 +126,24 @@ RC Table::create(int32_t table_id,
   return rc;
 }
 
+RC Table::drop(const char *meta_file_path, const char *table_name)
+{
+  RC rc = RC::SUCCESS;
+  // remove indexes
+  for (Index *index : indexes_) {
+    index->drop();
+  }
+
+  // destory buffer pool and remove data file
+  std::string data_file_path = table_data_file(base_dir_.c_str(), table_name);
+  BufferPoolManager &bpm = BufferPoolManager::instance();
+  rc = bpm.delete_file(data_file_path.c_str());
+
+  // remove meta file
+  int ret = ::remove(meta_file_path);
+  return rc;
+}
+
 RC Table::open(const char *meta_file, const char *base_dir)
 {
   // 加载元数据文件

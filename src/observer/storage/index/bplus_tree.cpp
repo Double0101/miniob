@@ -863,6 +863,20 @@ RC BplusTreeHandler::open(const char *file_name)
   return RC::SUCCESS;
 }
 
+RC BplusTreeHandler::drop()
+{
+  RC rc = RC::SUCCESS;
+  if (disk_buffer_pool_ != nullptr) {
+    BufferPoolManager &bpm = BufferPoolManager::instance();
+    rc = bpm.delete_file(mem_pool_item_->get_name().c_str());
+
+    mem_pool_item_ = nullptr;
+  }
+
+  disk_buffer_pool_ = nullptr;
+  return RC::SUCCESS;
+}
+
 RC BplusTreeHandler::close()
 {
   if (disk_buffer_pool_ != nullptr) {

@@ -475,6 +475,7 @@ public:
    */
   RC open(const char *file_name);
 
+  RC drop();
   /**
    * 关闭句柄indexHandle对应的索引文件
    */
