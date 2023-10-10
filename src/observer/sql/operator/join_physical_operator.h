@@ -17,15 +17,30 @@ See the Mulan PSL v2 for more details. */
 #include "sql/parser/parse.h"
 #include "sql/operator/physical_operator.h"
 
+class JoinPhysicalOperator : public PhysicalOperator
+{
+public:
+  explicit JoinPhysicalOperator(JoinOp join_type, std::unique_ptr<Expression> join_cond)
+      : join_type_(join_type), join_condition_(std::move(join_cond)) { }
+  virtual ~JoinPhysicalOperator() = default;
+
+  const JoinOp join_type() const {
+    return join_type_;
+  }
+
+protected:
+  JoinOp join_type_ = NO_JOIN;
+  std::unique_ptr<Expression> join_condition_ = nullptr;
+};
 /**
  * @brief 最简单的两表（称为左表、右表）join算子
  * @details 依次遍历左表的每一行，然后关联右表的每一行
  * @ingroup PhysicalOperator
  */
-class NestedLoopJoinPhysicalOperator : public PhysicalOperator
+class NestedLoopJoinPhysicalOperator : public JoinPhysicalOperator
 {
 public:
-  NestedLoopJoinPhysicalOperator();
+  NestedLoopJoinPhysicalOperator(JoinOp join_type, std::unique_ptr<Expression> join_cond);
   virtual ~NestedLoopJoinPhysicalOperator() = default;
 
   PhysicalOperatorType type() const override

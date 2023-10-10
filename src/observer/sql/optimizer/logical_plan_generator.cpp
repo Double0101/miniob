@@ -83,7 +83,9 @@ RC LogicalPlanGenerator::create_plan(
 
   const std::vector<Table *> &tables = select_stmt->tables();
   const std::vector<Field> &all_fields = select_stmt->query_fields();
-  for (Table *table : tables) {
+  Table *table = nullptr;
+  for (int i = 0; i < tables.size(); ++i) {
+    table = tables[i];
     std::vector<Field> fields;
     for (const Field &field : all_fields) {
       if (0 == strcmp(field.table_name(), table->name())) {
@@ -98,6 +100,26 @@ RC LogicalPlanGenerator::create_plan(
       JoinLogicalOperator *join_oper = new JoinLogicalOperator;
       join_oper->add_child(std::move(table_oper));
       join_oper->add_child(std::move(table_get_oper));
+      join_oper->set_join_type(select_stmt->join_stmt(i)->join_type());
+      /* set join conditions */
+      std::vector<unique_ptr<Expression>> cmp_exprs;
+      for (const FilterUnit *filter_unit : select_stmt->join_stmt(i)->filter_units()) {
+        const FilterObj &filter_obj_left = filter_unit->left();
+        const FilterObj &filter_obj_right = filter_unit->right();
+        unique_ptr<Expression> left(filter_obj_left.is_attr
+                                    ? static_cast<Expression *>(new FieldExpr(filter_obj_left.field))
+                                    : static_cast<Expression *>(new ValueExpr(filter_obj_left.value)));
+        unique_ptr<Expression> right(filter_obj_right.is_attr
+                                     ? static_cast<Expression *>(new FieldExpr(filter_obj_right.field))
+                                     : static_cast<Expression *>(new ValueExpr(filter_obj_right.value)));
+        ComparisonExpr *cmp_expr = new ComparisonExpr(filter_unit->comp(), std::move(left), std::move(right));
+        cmp_exprs.emplace_back(cmp_expr);
+      }
+      if (!cmp_exprs.empty()) {
+        unique_ptr<ConjunctionExpr> conjunction_expr(new ConjunctionExpr(ConjunctionExpr::Type::AND, cmp_exprs));
+        join_oper->set_condition(std::move(conjunction_expr));
+      }
+
       table_oper = unique_ptr<LogicalOperator>(join_oper);
     }
   }

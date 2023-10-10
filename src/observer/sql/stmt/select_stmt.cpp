@@ -12,6 +12,7 @@ See the Mulan PSL v2 for more details. */
 // Created by Wangyunlai on 2022/6/6.
 //
 
+#include "sql/stmt/join_stmt.h"
 #include "sql/stmt/select_stmt.h"
 #include "sql/stmt/filter_stmt.h"
 #include "common/log/log.h"
@@ -24,6 +25,9 @@ SelectStmt::~SelectStmt()
   if (nullptr != filter_stmt_) {
     delete filter_stmt_;
     filter_stmt_ = nullptr;
+  }
+  for (JoinStmt *join_stmt : join_stmts_) {
+    delete join_stmt;
   }
 }
 
@@ -45,9 +49,12 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
 
   // collect tables in `from` statement
   std::vector<Table *> tables;
+  std::vector<JoinStmt *> join_stmts;
   std::unordered_map<std::string, Table *> table_map;
-  for (size_t i = 0; i < select_sql.relations.size(); i++) {
-    const char *table_name = select_sql.relations[i].c_str();
+  for (size_t i = 0; i <= select_sql.relations.size(); i++) {
+    const char *table_name = i == 0 ?
+        select_sql.first_relation.c_str() : select_sql.relations[i - 1].relation.c_str();
+
     if (nullptr == table_name) {
       LOG_WARN("invalid argument. relation name is null. index=%d", i);
       return RC::INVALID_ARGUMENT;
@@ -61,6 +68,18 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
 
     tables.push_back(table);
     table_map.insert(std::pair<std::string, Table *>(table_name, table));
+    JoinStmt *join_stmt = nullptr;
+    RC rc = JoinStmt::create(db,
+                             nullptr,
+                             &table_map,
+                             i == 0 ? nullptr : select_sql.relations[i - 1].conditions.data(),
+                             i == 0 ? 0 : static_cast<int>(select_sql.relations[i - 1].conditions.size()),
+                             i == 0 ? NO_JOIN : select_sql.relations[i - 1].join_type,
+                             join_stmt);
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("cannot construct join stmt");
+    }
+    join_stmts.push_back(join_stmt);
   }
 
   // collect query fields in `select` statement
@@ -147,6 +166,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
   SelectStmt *select_stmt = new SelectStmt();
   // TODO add expression copy
   select_stmt->tables_.swap(tables);
+  select_stmt->join_stmts_.swap(join_stmts);
   select_stmt->query_fields_.swap(query_fields);
   select_stmt->filter_stmt_ = filter_stmt;
   stmt = select_stmt;

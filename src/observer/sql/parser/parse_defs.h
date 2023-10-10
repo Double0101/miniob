@@ -76,6 +76,22 @@ struct ConditionSqlNode
   Value           right_value;     ///< right-hand side value if right_is_attr = FALSE
 };
 
+enum JoinOp
+{
+  NO_JOIN,
+  CROSS_JOIN,
+  INNER_JOIN,
+  LEFT_JOIN,
+  RIGHT_JOIN
+};
+
+struct JoinSqlNode
+{
+  std::string relation;
+  std::vector<ConditionSqlNode> conditions;
+  JoinOp join_type;
+};
+
 /**
  * @brief 描述一个select语句
  * @ingroup SQLParser
@@ -90,7 +106,8 @@ struct ConditionSqlNode
 struct SelectSqlNode
 {
   std::vector<RelAttrSqlNode>     attributes;    ///< attributes in select clause
-  std::vector<std::string>        relations;     ///< 查询的表
+  std::string                     first_relation;
+  std::vector<JoinSqlNode>        relations;     ///< 查询的表
   std::vector<ConditionSqlNode>   conditions;    ///< 查询条件，使用AND串联起来多个条件
 };
 

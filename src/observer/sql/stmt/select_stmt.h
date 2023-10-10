@@ -20,6 +20,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/rc.h"
 #include "sql/stmt/stmt.h"
 #include "storage/field/field.h"
+#include "join_stmt.h"
 
 class FieldMeta;
 class FilterStmt;
@@ -57,9 +58,14 @@ public:
   {
     return filter_stmt_;
   }
+  JoinStmt *join_stmt(int idx) const
+  {
+    return join_stmts_[idx];
+  }
 
 private:
   std::vector<Field> query_fields_;
   std::vector<Table *> tables_;
+  std::vector<JoinStmt *> join_stmts_;
   FilterStmt *filter_stmt_ = nullptr;
 };

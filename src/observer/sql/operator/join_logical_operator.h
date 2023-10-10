@@ -31,6 +31,18 @@ public:
   {
     return LogicalOperatorType::JOIN;
   }
+  JoinOp join_type() const { return join_type_; }
+  void set_join_type(JoinOp join_type) { join_type_ = join_type; }
+  void set_condition(std::unique_ptr<Expression> join_condition)
+  {
+    join_conditions_.push_back(std::move(join_condition));
+  }
 
+  std::vector<std::unique_ptr<Expression>> &join_conditions()
+  {
+    return join_conditions_;
+  }
 private:
+  JoinOp join_type_ = NO_JOIN;
+  std::vector<std::unique_ptr<Expression>> join_conditions_;
 };

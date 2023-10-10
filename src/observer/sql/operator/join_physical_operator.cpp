@@ -14,8 +14,8 @@ See the Mulan PSL v2 for more details. */
 
 #include "sql/operator/join_physical_operator.h"
 
-NestedLoopJoinPhysicalOperator::NestedLoopJoinPhysicalOperator()
-{}
+NestedLoopJoinPhysicalOperator::NestedLoopJoinPhysicalOperator(JoinOp join_type, std::unique_ptr<Expression> join_cond)
+    : JoinPhysicalOperator(join_type, std::move(join_cond)) {}
 
 RC NestedLoopJoinPhysicalOperator::open(Trx *trx)
 {
@@ -39,29 +39,37 @@ RC NestedLoopJoinPhysicalOperator::next()
 {
   bool left_need_step = (left_tuple_ == nullptr);
   RC rc = RC::SUCCESS;
-  if (round_done_) {
-    left_need_step = true;
-  } else {
+  Value value;
+  Tuple *tuple = nullptr;
+  do {
+    if (round_done_) {
+      left_need_step = true;
+    }
+    if (left_need_step) {
+      rc = left_next();
+      left_need_step = false;
+      if (rc != RC::SUCCESS) {
+        return rc;
+      }
+    }
+
     rc = right_next();
     if (rc != RC::SUCCESS) {
       if (rc == RC::RECORD_EOF) {
         left_need_step = true;
+        continue;
       } else {
         return rc;
       }
-    } else {
-      return rc;  // got one tuple from right
     }
-  }
-
-  if (left_need_step) {
-    rc = left_next();
-    if (rc != RC::SUCCESS) {
+    tuple = current_tuple();
+    if (join_condition_ != nullptr) {
+      join_condition_->get_value(*tuple, value);
+    } else {
       return rc;
     }
-  }
+  } while (!value.get_boolean());
 
-  rc = right_next();
   return rc;
 }
 

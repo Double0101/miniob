@@ -61,6 +61,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         TABLES
         INDEX
         CALC
+        INNER
+        JOIN
         SELECT
         DESC
         SHOW
@@ -106,6 +108,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   Value *                           value;
   enum CompOp                       comp;
   RelAttrSqlNode *                  rel_attr;
+  JoinSqlNode *                     relation;
   std::vector<AttrInfoSqlNode> *    attr_infos;
   AttrInfoSqlNode *                 attr_info;
   Expression *                      expression;
@@ -113,7 +116,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   std::vector<Value> *              value_list;
   std::vector<ConditionSqlNode> *   condition_list;
   std::vector<RelAttrSqlNode> *     rel_attr_list;
-  std::vector<std::string> *        relation_list;
+  std::vector<JoinSqlNode> *        relation_list;
   char *                            string;
   int                               number;
   float                             floats;
@@ -139,6 +142,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <condition_list>      condition_list
 %type <rel_attr_list>       select_attr
 %type <relation_list>       rel_list
+%type <relation>            relation
 %type <rel_attr_list>       attr_list
 %type <expression>          expression
 %type <expression_list>     expression_list
@@ -428,7 +432,7 @@ select_stmt:        /*  select 语句的语法解析树*/
         $$->selection.relations.swap(*$5);
         delete $5;
       }
-      $$->selection.relations.push_back($4);
+      $$->selection.first_relation = $4;
       std::reverse($$->selection.relations.begin(), $$->selection.relations.end());
 
       if ($6 != nullptr) {
@@ -547,17 +551,47 @@ rel_list:
     {
       $$ = nullptr;
     }
-    | COMMA ID rel_list {
-      if ($3 != nullptr) {
-        $$ = $3;
+    | relation rel_list {
+      if ($2 != nullptr) {
+        $$ = $2;
       } else {
-        $$ = new std::vector<std::string>;
+        $$ = new std::vector<JoinSqlNode>;
       }
 
-      $$->push_back($2);
-      free($2);
+      $$->emplace_back(*$1);
+      delete $1;
     }
     ;
+
+relation:
+    COMMA ID {
+      $$ = new JoinSqlNode();
+      $$->join_type = CROSS_JOIN;
+      $$->relation = $2;
+      free($2);
+    }
+    | JOIN ID ON condition_list {
+      $$ = new JoinSqlNode();
+      $$->join_type = INNER_JOIN;
+      $$->relation = $2;
+      free($2);
+      if ($4 != nullptr) {
+        $$->conditions.swap(*$4);
+        delete $4;
+      }
+    }
+    | INNER JOIN ID ON condition_list {
+      $$ = new JoinSqlNode();
+      $$->join_type = INNER_JOIN;
+      $$->relation = $3;
+      free($3);
+      if ($5 != nullptr) {
+        $$->conditions.swap(*$5);
+        delete $5;
+      }
+    }
+    ;
+
 where:
     /* empty */
     {
