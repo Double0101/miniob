@@ -40,6 +40,7 @@ RC JoinStmt::create(Db *db, Table *default_table, std::unordered_map<std::string
     rc = FilterStmt::create_filter_unit(db, default_table, tables, conditions[i], filter_unit);
     if (rc != RC::SUCCESS) {
       delete tmp_stmt;
+      delete filter_unit;
       LOG_WARN("failed to create filter unit. condition index=%d", i);
       return rc;
     }

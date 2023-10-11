@@ -78,6 +78,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
                              join_stmt);
     if (rc != RC::SUCCESS) {
       LOG_WARN("cannot construct join stmt");
+      return rc;
     }
     join_stmts.push_back(join_stmt);
   }
