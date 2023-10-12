@@ -202,6 +202,25 @@ int Value::compare(const Value &other) const
   } else if (this->attr_type_ == FLOATS && other.attr_type_ == INTS) {
     float other_data = other.num_value_.int_value_;
     return common::compare_float((void *)&this->num_value_.float_value_, (void *)&other_data);
+  } else if (this->attr_type_ == CHARS) {
+    switch (other.attr_type_) {
+      case CHARS: {
+        return common::compare_string((void *)this->str_value_.c_str(),
+                                      this->str_value_.length(),
+                                      (void *)other.str_value_.c_str(),
+                                      other.str_value_.length());
+      } break;
+      case INTS:
+      case FLOATS:
+      case DATES: {
+        const std::string other_string = other.to_string();
+        return common::compare_string((void *)this->str_value_.c_str(),
+                                      this->str_value_.length(),
+                                      (void *)other_string.c_str(),
+                                      other_string.length());
+      } break;
+      default: {}
+    }
   }
   LOG_WARN("not supported");
   return -1;  // TODO return rc?
