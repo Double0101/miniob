@@ -202,22 +202,59 @@ int Value::compare(const Value &other) const
   } else if (this->attr_type_ == FLOATS && other.attr_type_ == INTS) {
     float other_data = other.num_value_.int_value_;
     return common::compare_float((void *)&this->num_value_.float_value_, (void *)&other_data);
+  } else if (this->attr_type_ == DATES && other.attr_type_ == CHARS) {
+    int other_date = 0;
+    RC rc = string_to_date(other.str_value_.c_str(), other_date);
+    if (rc == RC::SUCCESS) {
+      return common::compare_int((void *)&this->num_value_.int_value_, (void *)&other_date);
+    }
+  } else if (this->attr_type_ == CHARS && other.attr_type_ == DATES) {
+    int this_date = 0;
+    RC rc = string_to_date(this->str_value_.c_str(), this_date);
+    if (rc == RC::SUCCESS) {
+      return common::compare_int((void *)&this_date, (void *)&other.num_value_.int_value_);
+    }
   } else if (this->attr_type_ == CHARS) {
     switch (other.attr_type_) {
-      case CHARS: {
-        return common::compare_string((void *)this->str_value_.c_str(),
-                                      this->str_value_.length(),
-                                      (void *)other.str_value_.c_str(),
-                                      other.str_value_.length());
+      case INTS: {
+        int this_int = 0;
+        try {
+          this_int = (int) std::stol(str_value_);
+        } catch (std::exception const &ex) {
+          this_int = 0;
+        }
+        return common::compare_int((void *)&this_int, (void *)&other.num_value_.int_value_);
       } break;
-      case INTS:
-      case FLOATS:
-      case DATES: {
-        const std::string other_string = other.to_string();
-        return common::compare_string((void *)this->str_value_.c_str(),
-                                      this->str_value_.length(),
-                                      (void *)other_string.c_str(),
-                                      other_string.length());
+      case FLOATS: {
+        float this_float = 0.0;
+        try {
+          this_float = std::stof(str_value_);
+        } catch (std::exception const &ex) {
+          this_float = 0.0;
+        }
+        return common::compare_float((void *)&this_float, (void *)&other.num_value_.float_value_);
+      } break;
+      default: {}
+    }
+  } else if (other.attr_type_ == CHARS) {
+    switch (attr_type_) {
+      case INTS: {
+        int other_int = 0;
+        try {
+          other_int = (int) std::stol(other.str_value_);
+        } catch (std::exception const &ex) {
+          other_int = 0;
+        }
+        return common::compare_int((void *)&num_value_.int_value_, (void *)&other_int);
+      } break;
+      case FLOATS: {
+        float other_float = 0.0;
+        try {
+          other_float = std::stof(other.str_value_);
+        } catch (std::exception const &ex) {
+          other_float = 0.0;
+        }
+        return common::compare_float((void *)&num_value_.float_value_, (void *)&other_float);
       } break;
       default: {}
     }
