@@ -220,7 +220,7 @@ RC LogicalPlanGenerator::create_plan(
     predicate_oper->add_child(std::move(table_get_oper));
     update_operator->add_child(std::move(predicate_oper));
   } else {
-    logical_operator->add_child(std::move(table_get_oper));
+    update_operator->add_child(std::move(table_get_oper));
   }
   logical_operator.reset(update_operator);
   return RC::SUCCESS;
