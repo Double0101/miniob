@@ -106,6 +106,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   ParsedSqlNode *                   sql_node;
   ConditionSqlNode *                condition;
   Value *                           value;
+  std::vector<Value> *              record;
+  std::vector<std::vector<Value>> * record_list;
   AttrValue *                       attr_value;
   enum CompOp                       comp;
   RelAttrSqlNode *                  rel_attr;
@@ -134,6 +136,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <number>              type
 %type <condition>           condition
 %type <value>               value
+%type <record>              record
+%type <record_list>         record_list
 %type <attr_value>          attr_value
 %type <number>              number
 %type <comp>                comp_op
@@ -353,17 +357,17 @@ type:
     | DATE_T   { $$=DATES; }
     ;
 insert_stmt:        /*insert   语句的语法解析树*/
-    INSERT INTO ID VALUES LBRACE value value_list RBRACE 
+    INSERT INTO ID VALUES record record_list
     {
       $$ = new ParsedSqlNode(SCF_INSERT);
       $$->insertion.relation_name = $3;
-      if ($7 != nullptr) {
-        $$->insertion.values.swap(*$7);
-        delete $7;
+      if ($6 != nullptr) {
+        $$->insertion.insert_records.swap(*$6);
+        delete $6;
       }
-      $$->insertion.values.emplace_back(*$6);
-      std::reverse($$->insertion.values.begin(), $$->insertion.values.end());
-      delete $6;
+      $$->insertion.insert_records.emplace_back(*$5);
+      std::reverse($$->insertion.insert_records.begin(), $$->insertion.insert_records.end());
+      delete $5;
       free($3);
     }
     ;
@@ -396,6 +400,34 @@ value:
       char *tmp = common::substr($1,1,strlen($1)-2);
       $$ = new Value(tmp);
       free(tmp);
+    }
+    ;
+record_list:
+    /* empty */
+    {
+      $$ = nullptr;
+    }
+    | COMMA record record_list {
+      if ($3 != nullptr) {
+        $$ = $3;
+      } else {
+        $$ = new std::vector<std::vector<Value>>;
+      }
+      $$->emplace_back(*$2);
+      delete $2;
+    }
+    ;
+
+record:
+    LBRACE value value_list RBRACE {
+      if ($3 != nullptr) {
+        $$ = $3;
+      } else {
+        $$ = new std::vector<Value>;
+      }
+      $$->emplace_back(*$2);
+      std::reverse($$->begin(), $$->end());
+      delete $2;
     }
     ;
 
