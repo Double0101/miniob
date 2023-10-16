@@ -106,6 +106,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   ParsedSqlNode *                   sql_node;
   ConditionSqlNode *                condition;
   Value *                           value;
+  AttrValue *                       attr_value;
   enum CompOp                       comp;
   RelAttrSqlNode *                  rel_attr;
   JoinSqlNode *                     relation;
@@ -114,6 +115,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   Expression *                      expression;
   std::vector<Expression *> *       expression_list;
   std::vector<Value> *              value_list;
+  std::vector<AttrValue> *          attr_value_list;
   std::vector<ConditionSqlNode> *   condition_list;
   std::vector<RelAttrSqlNode> *     rel_attr_list;
   std::vector<JoinSqlNode> *        relation_list;
@@ -132,12 +134,14 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <number>              type
 %type <condition>           condition
 %type <value>               value
+%type <attr_value>          attr_value
 %type <number>              number
 %type <comp>                comp_op
 %type <rel_attr>            rel_attr
 %type <attr_infos>          attr_def_list
 %type <attr_info>           attr_def
 %type <value_list>          value_list
+%type <attr_value_list>     attr_value_list
 %type <condition_list>      where
 %type <condition_list>      condition_list
 %type <rel_attr_list>       select_attr
@@ -297,6 +301,7 @@ create_table_stmt:    /*create table 语句的语法解析树*/
 
       if (src_attrs != nullptr) {
         create_table.attr_infos.swap(*src_attrs);
+        delete $6;
       }
       create_table.attr_infos.emplace_back(*$5);
       std::reverse(create_table.attr_infos.begin(), create_table.attr_infos.end());
@@ -354,6 +359,7 @@ insert_stmt:        /*insert   语句的语法解析树*/
       $$->insertion.relation_name = $3;
       if ($7 != nullptr) {
         $$->insertion.values.swap(*$7);
+        delete $7;
       }
       $$->insertion.values.emplace_back(*$6);
       std::reverse($$->insertion.values.begin(), $$->insertion.values.end());
@@ -392,6 +398,32 @@ value:
       free(tmp);
     }
     ;
+
+attr_value_list:
+    /* empty */
+    {
+      $$ = nullptr;
+    }
+    | COMMA attr_value attr_value_list {
+      if ($3 != nullptr) {
+        $$ = $3;
+      } else {
+        $$ = new std::vector<AttrValue>;
+      }
+      $$->emplace_back(*$2);
+      delete $2;
+    }
+    ;
+
+attr_value:
+    ID EQ value {
+      $$ = new AttrValue();
+      $$->attribute_name = $1;
+      free($1);
+      $$->value = *$3;
+      delete $3;
+    }
+    ;
     
 delete_stmt:    /*  delete 语句的语法解析树*/
     DELETE FROM ID where 
@@ -406,18 +438,22 @@ delete_stmt:    /*  delete 语句的语法解析树*/
     }
     ;
 update_stmt:      /*  update 语句的语法解析树*/
-    UPDATE ID SET ID EQ value where 
+    UPDATE ID SET attr_value attr_value_list where
     {
       $$ = new ParsedSqlNode(SCF_UPDATE);
       $$->update.relation_name = $2;
-      $$->update.attribute_name = $4;
-      $$->update.value = *$6;
-      if ($7 != nullptr) {
-        $$->update.conditions.swap(*$7);
-        delete $7;
+      if ($5 != nullptr) {
+        $$->update.attr_values.swap(*$5);
+        delete $5;
+      }
+      $$->update.attr_values.emplace_back(*$4);
+      delete $4;
+      std::reverse($$->update.attr_values.begin(), $$->update.attr_values.end());
+      if ($6 != nullptr) {
+        $$->update.conditions.swap(*$6);
+        delete $6;
       }
       free($2);
-      free($4);
     }
     ;
 select_stmt:        /*  select 语句的语法解析树*/

@@ -1417,7 +1417,19 @@ RC BplusTreeHandler::insert_entry(const char *user_key, const RID *rid)
   LOG_TRACE("insert entry success");
   return RC::SUCCESS;
 }
-
+/*
+RC BplusTreeHandler::update_entry(const char *user_key, const RID *rid)
+{
+  RC rc = delete_entry(user_key, rid);
+  if (rc == RC::SUCCESS) {
+    rc = insert_entry(user_key, rid);
+  }
+  if (rc != RC::SUCCESS) {
+    LOG_TRACE("Failed to update leaf of index, rid:%s. rc=%s", rid->to_string().c_str(), strrc(rc));
+  }
+  return rc;
+}
+*/
 RC BplusTreeHandler::get_entry(const char *user_key, int key_len, std::list<RID> &rids)
 {
   BplusTreeScanner scanner(*this);

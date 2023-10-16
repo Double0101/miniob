@@ -28,6 +28,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/index/index.h"
 #include "storage/index/bplus_tree_index.h"
 #include "storage/trx/trx.h"
+#include "sql/stmt/update_stmt.h"
 
 Table::~Table()
 {
@@ -227,6 +228,20 @@ RC Table::insert_record(Record &record)
   }
   return rc;
 }
+/*
+RC Table::update_record(Record &record)
+{
+  RC rc = RC::SUCCESS;
+  rc = record_handler_->update_record(record.data(), table_meta_.record_size(), &record.rid());
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Update record failed. table name=%s, rc=%s", table_meta_.name(), strrc(rc));
+    return rc;
+  }
+
+  rc = update_entry_of_indexes(record.data(), record.rid());
+  return rc;
+}
+*/
 
 RC Table::visit_record(const RID &rid, bool readonly, std::function<void(Record &)> visitor)
 {
@@ -326,6 +341,34 @@ RC Table::make_record(int value_num, const Value *values, Record &record)
   }
 
   record.set_data_owner(record_data, record_size);
+  return RC::SUCCESS;
+}
+
+RC Table::modify_record(int mod_num, const UpdateValue *update_values, Record &record)
+{
+  for (int i = 0; i < mod_num; ++i) {
+    const FieldMeta *field = update_values[i].field().meta();
+    const Value &value = update_values[i].value();
+    if (field->type() != value.attr_type()) {
+      LOG_ERROR("Invalid value type. table name =%s, field name=%s, type=%d, but given=%d",
+                table_meta_.name(), field->name(), field->type(), value.attr_type());
+      return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+    }
+  }
+
+  char *record_data = record.data();
+  for (int i = 0; i < mod_num; i++) {
+    const FieldMeta *field = update_values[i].field().meta();
+    const Value &value = update_values[i].value();
+    size_t copy_len = field->len();
+    if (field->type() == CHARS) {
+      const size_t data_len = value.length();
+      if (copy_len > data_len) {
+        copy_len = data_len + 1;
+      }
+    }
+    memcpy(record_data + field->offset(), value.data(), copy_len);
+  }
   return RC::SUCCESS;
 }
 
@@ -480,6 +523,19 @@ RC Table::insert_entry_of_indexes(const char *record, const RID &rid)
   }
   return rc;
 }
+/*
+RC Table::update_entry_of_indexes(const char *record, const RID &rid)
+{
+  RC rc = RC::SUCCESS;
+  for (Index *index : indexes_) {
+    rc = index->update_entry(record, &rid);
+    if (rc != RC::SUCCESS) {
+      break;
+    }
+  }
+  return rc;
+}
+*/
 
 RC Table::delete_entry_of_indexes(const char *record, const RID &rid, bool error_on_not_exists)
 {

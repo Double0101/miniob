@@ -54,6 +54,8 @@ public:
    */
   virtual RC insert_entry(const char *record, const RID *rid) = 0;
 
+//  virtual RC update_entry(const char *record, const RID *rid) = 0;
+
   /**
    * @brief 删除一条数据
    * 

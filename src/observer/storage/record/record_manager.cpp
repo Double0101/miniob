@@ -407,6 +407,20 @@ RC RecordFileHandler::insert_record(const char *data, int record_size, RID *rid)
   // 找到空闲位置
   return record_page_handler.insert_record(data, rid);
 }
+/*
+RC RecordFileHandler::update_record(const char *data, int record_size, RID *rid)
+{
+  RC rc = RC::SUCCESS;
+
+  RecordPageHandler page_handler;
+  if ((rc = page_handler.init(*disk_buffer_pool_, rid->page_num, false /*readonly*\/)) != RC::SUCCESS) {
+    LOG_ERROR("Failed to init record page handler.page number=%d. rc=%s", rid->page_num, strrc(rc));
+    return rc;
+  }
+
+
+}
+*/
 
 RC RecordFileHandler::recover_insert_record(const char *data, int record_size, const RID &rid)
 {

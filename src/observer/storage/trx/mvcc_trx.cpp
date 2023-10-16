@@ -159,6 +159,34 @@ RC MvccTrx::insert_record(Table *table, Record &record)
   }
   return rc;
 }
+/*
+RC MvccTrx::update_record(Table *table, Record &record)
+{
+  Field begin_field;
+  Field end_field;
+  trx_fields(table, begin_field, end_field);
+
+  begin_field.set_int(record, -trx_id_);
+  end_field.set_int(record, trx_kit_.max_trx_id());
+  RC rc = table->update_record(record);
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("failed to update record in table. rc=%s", strrc(rc));
+    return rc;
+  }
+
+  rc = log_manager_->append_log(CLogType::UPDATE, trx_id_, table->table_id(), record.rid(), record.len(), 0/*offset*\/, record.data());
+  ASSERT(rc == RC::SUCCESS, "failed to append update record log. trx id=%d, table id=%d, rid=%s, record len=%d, rc=%s",
+         trx_id_, table->table_id(), record.rid().to_string().c_str(), record.len(), strrc(rc));
+
+  pair<OperationSet::iterator, bool> ret =
+      operations_.insert(Operation(Operation::Type::UPDATE, table, record.rid()));
+  if (!ret.second) {
+    rc = RC::INTERNAL;
+    LOG_WARN("failed to insert operation(update) into operation set: duplicate");
+  }
+  return rc;
+}
+*/
 
 RC MvccTrx::delete_record(Table * table, Record &record)
 {

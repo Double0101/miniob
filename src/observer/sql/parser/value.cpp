@@ -129,6 +129,9 @@ void Value::set_value(const Value &value)
     case BOOLEANS: {
       set_boolean(value.get_boolean());
     } break;
+    case DATES: {
+      set_date(value.get_int());
+    } break;
     case UNDEFINED: {
       ASSERT(false, "got an invalid value type");
     } break;
